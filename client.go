@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/hetiansu5/urlquery"
 )
 
 type httpClient struct {
@@ -24,15 +26,24 @@ func NewHttpClient(config HttpClientConfig) *httpClient {
 	}
 }
 
-func (c *httpClient) Post(ctx context.Context, url string, data interface{}, headers map[string]string) ([]byte, error) {
+func (c *httpClient) Post(ctx context.Context, url string, data any, headers map[string]string) ([]byte, error) {
 	return c.Request(ctx, http.MethodPost, url, data, headers)
 }
 
-func (c *httpClient) Get(ctx context.Context, url string, headers map[string]string) ([]byte, error) {
+func (c *httpClient) Get(ctx context.Context, url string, params map[string]any, headers map[string]string) ([]byte, error) {
+	if params != nil {
+		queryEncoder := urlquery.NewEncoder()
+		queryParamsString, err := queryEncoder.Marshal(params)
+		if err != nil {
+			return nil, err
+		}
+		url = fmt.Sprintf("%s?%s", url, queryParamsString)
+	}
+
 	return c.Request(ctx, http.MethodGet, url, nil, headers)
 }
 
-func (c *httpClient) Request(context context.Context, method string, url string, data interface{}, headers map[string]string) ([]byte, error) {
+func (c *httpClient) Request(context context.Context, method string, url string, data any, headers map[string]string) ([]byte, error) {
 	jsonBody, err := json.Marshal(data)
 
 	if err != nil {
