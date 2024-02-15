@@ -3,13 +3,10 @@ package gohttpclient
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
-
-	"github.com/hetiansu5/urlquery"
 )
 
 type httpClient struct {
@@ -27,13 +24,16 @@ func NewHttpClient(config HttpClientConfig) *httpClient {
 }
 
 func (c *httpClient) Post(ctx context.Context, url string, data any, headers map[string]string) ([]byte, error) {
-	return c.Request(ctx, http.MethodPost, url, data, headers)
+	body, err := encodeBody(data, headers)
+	if err != nil {
+		return []byte{}, err
+	}
+	return c.Request(ctx, http.MethodPost, url, body, headers)
 }
 
 func (c *httpClient) Get(ctx context.Context, url string, params map[string]any, headers map[string]string) ([]byte, error) {
 	if params != nil {
-		queryEncoder := urlquery.NewEncoder()
-		queryParamsString, err := queryEncoder.Marshal(params)
+		queryParamsString, err := urlEncode(params)
 		if err != nil {
 			return nil, err
 		}
@@ -43,14 +43,8 @@ func (c *httpClient) Get(ctx context.Context, url string, params map[string]any,
 	return c.Request(ctx, http.MethodGet, url, nil, headers)
 }
 
-func (c *httpClient) Request(context context.Context, method string, url string, data any, headers map[string]string) ([]byte, error) {
-	jsonBody, err := json.Marshal(data)
-
-	if err != nil {
-		return nil, err
-	}
-
-	bodyReader := bytes.NewReader(jsonBody)
+func (c *httpClient) Request(context context.Context, method string, url string, body []byte, headers map[string]string) ([]byte, error) {
+	bodyReader := bytes.NewReader(body)
 
 	req, err := http.NewRequest(method, url, bodyReader)
 
