@@ -40,8 +40,6 @@ func (c *httpClient) Get(ctx context.Context, url string, params map[string]any,
 		url = fmt.Sprintf("%s?%s", url, queryParamsString)
 	}
 
-	fmt.Println(url)
-
 	return c.Request(ctx, http.MethodGet, url, nil, headers)
 }
 
