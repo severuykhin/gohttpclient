@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type httpClient struct {
+type HttpClient struct {
 	config HttpClientConfig
 }
 
@@ -17,25 +17,25 @@ type HttpClientConfig struct {
 	RequestTimeout time.Duration
 }
 
-func NewHttpClient(config HttpClientConfig) *httpClient {
-	return &httpClient{
+func NewHttpClient(config HttpClientConfig) *HttpClient {
+	return &HttpClient{
 		config: config,
 	}
 }
 
-func (c *httpClient) Post(ctx context.Context, url string, data any, headers map[string]string) ([]byte, error) {
+func (c *HttpClient) Post(ctx context.Context, url string, data any, headers map[string]string) (Response, error) {
 	body, err := encodeBody(data, headers)
 	if err != nil {
-		return []byte{}, err
+		return Response{}, err
 	}
 	return c.Request(ctx, http.MethodPost, url, body, headers)
 }
 
-func (c *httpClient) Get(ctx context.Context, url string, params map[string]any, headers map[string]string) ([]byte, error) {
+func (c *HttpClient) Get(ctx context.Context, url string, params map[string]any, headers map[string]string) (Response, error) {
 	if params != nil {
 		queryParamsString, err := urlEncode(params)
 		if err != nil {
-			return nil, err
+			return Response{}, err
 		}
 		url = fmt.Sprintf("%s?%s", url, queryParamsString)
 	}
@@ -43,13 +43,13 @@ func (c *httpClient) Get(ctx context.Context, url string, params map[string]any,
 	return c.Request(ctx, http.MethodGet, url, nil, headers)
 }
 
-func (c *httpClient) Request(context context.Context, method string, url string, body []byte, headers map[string]string) ([]byte, error) {
+func (c *HttpClient) Request(context context.Context, method string, url string, body []byte, headers map[string]string) (Response, error) {
 	bodyReader := bytes.NewReader(body)
 
 	req, err := http.NewRequest(method, url, bodyReader)
 
 	if err != nil {
-		return nil, err
+		return Response{}, err
 	}
 
 	for key, val := range headers {
@@ -63,18 +63,17 @@ func (c *httpClient) Request(context context.Context, method string, url string,
 	response, err := client.Do(req)
 
 	if err != nil {
-		return nil, err
-	}
-
-	if response.StatusCode < 200 || response.StatusCode > 201 {
-		return nil, fmt.Errorf("client: bad response code (%d) from dest (%s)", response.StatusCode, url)
+		return Response{}, err
 	}
 
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("client: could not read response body with error: %s", err)
+		return Response{}, fmt.Errorf("client: could not read response body with error: %s", err)
 	}
 
-	return responseBody, nil
+	return Response{
+		Code: response.StatusCode,
+		Body: responseBody,
+	}, nil
 
 }
